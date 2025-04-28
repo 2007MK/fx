@@ -24,12 +24,13 @@ export const currencies = pgTable("currencies", {
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
 });
 
-export const insertCurrencySchema = createInsertSchema(currencies).pick({
-  code: true,
-  name: true,
-  country: true,
-  currentRate: true,
-});
+export const insertCurrencySchema = createInsertSchema(currencies)
+  .pick({
+    code: true,
+    name: true, 
+    country: true,
+    currentRate: true,
+  });
 
 // Inventory schema
 export const inventory = pgTable("inventory", {
@@ -40,11 +41,12 @@ export const inventory = pgTable("inventory", {
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
 });
 
-export const insertInventorySchema = createInsertSchema(inventory).pick({
-  currencyId: true,
-  amount: true,
-  avgBuyPrice: true,
-});
+export const insertInventorySchema = createInsertSchema(inventory)
+  .pick({
+    currencyId: true,
+    amount: true,
+    avgBuyPrice: true,
+  });
 
 // Transaction schema
 export const transactions = pgTable("transactions", {
@@ -59,15 +61,25 @@ export const transactions = pgTable("transactions", {
   profit: numeric("profit"),
 });
 
-export const insertTransactionSchema = createInsertSchema(transactions).pick({
-  currencyId: true,
-  type: true,
-  amount: true,
-  rate: true,
-  total: true,
-  notes: true,
-  profit: true,
-});
+export const insertTransactionSchema = createInsertSchema(transactions)
+  .pick({
+    currencyId: true,
+    type: true,
+    amount: true,
+    rate: true,
+    total: true,
+    notes: true,
+    profit: true,
+  })
+  .transform((data) => ({
+    ...data,
+    amount: typeof data.amount === 'number' ? data.amount.toString() : data.amount,
+    rate: typeof data.rate === 'number' ? data.rate.toString() : data.rate,
+    total: typeof data.total === 'number' ? data.total.toString() : data.total,
+    profit: data.profit !== undefined && typeof data.profit === 'number' 
+      ? data.profit.toString() 
+      : data.profit,
+  }));
 
 // Stats schema for daily profit tracking
 export const dailyStats = pgTable("daily_stats", {
