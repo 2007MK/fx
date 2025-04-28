@@ -1,0 +1,221 @@
+import type { Express, Request, Response } from "express";
+import { createServer, type Server } from "http";
+import { z } from "zod";
+import { storage } from "./storage";
+import {
+  insertCurrencySchema,
+  insertTransactionSchema
+} from "@shared/schema";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Get all currencies with inventory info
+  app.get("/api/currencies", async (_req: Request, res: Response) => {
+    try {
+      const currencies = await storage.getCurrenciesWithInventory();
+      res.json(currencies);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to retrieve currencies" });
+    }
+  });
+
+  // Add a new currency
+  app.post("/api/currencies", async (req: Request, res: Response) => {
+    try {
+      const currencyData = insertCurrencySchema.parse(req.body);
+      
+      // Check if currency code already exists
+      const existingCurrency = await storage.getCurrencyByCode(currencyData.code);
+      if (existingCurrency) {
+        return res.status(400).json({ message: "Currency code already exists" });
+      }
+      
+      const currency = await storage.createCurrency(currencyData);
+      
+      // Create inventory entry with 0 amount
+      await storage.createInventoryItem({
+        currencyId: currency.id,
+        amount: 0,
+        avgBuyPrice: Number(currency.currentRate)
+      });
+      
+      res.status(201).json(currency);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid currency data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create currency" });
+      }
+    }
+  });
+
+  // Update currency rate
+  app.patch("/api/currencies/:id/rate", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { rate } = req.body;
+      
+      if (isNaN(id) || typeof rate !== 'number') {
+        return res.status(400).json({ message: "Invalid ID or rate" });
+      }
+      
+      const currency = await storage.updateCurrencyRate(id, rate);
+      
+      if (!currency) {
+        return res.status(404).json({ message: "Currency not found" });
+      }
+      
+      res.json(currency);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update currency rate" });
+    }
+  });
+
+  // Get all transactions
+  app.get("/api/transactions", async (_req: Request, res: Response) => {
+    try {
+      const transactions = await storage.getTransactions();
+      res.json(transactions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to retrieve transactions" });
+    }
+  });
+
+  // Create a new transaction (BUY)
+  app.post("/api/transactions/buy", async (req: Request, res: Response) => {
+    try {
+      const transactionData = insertTransactionSchema.parse({
+        ...req.body,
+        type: "BUY",
+        profit: 0 // No profit for buys
+      });
+      
+      const { currencyId, amount, rate, total } = transactionData;
+      
+      // Get the currency
+      const currency = await storage.getCurrency(currencyId);
+      if (!currency) {
+        return res.status(404).json({ message: "Currency not found" });
+      }
+      
+      // Get or create inventory item
+      let inventoryItem = await storage.getInventoryByCurrencyId(currencyId);
+      
+      if (!inventoryItem) {
+        inventoryItem = await storage.createInventoryItem({
+          currencyId,
+          amount: 0,
+          avgBuyPrice: Number(rate)
+        });
+      }
+      
+      // Calculate new average buy price
+      const currentTotalValue = Number(inventoryItem.amount) * Number(inventoryItem.avgBuyPrice);
+      const newValue = Number(amount) * Number(rate);
+      const newTotalAmount = Number(inventoryItem.amount) + Number(amount);
+      const newAvgBuyPrice = newTotalAmount > 0 
+        ? (currentTotalValue + newValue) / newTotalAmount 
+        : Number(rate);
+      
+      // Update inventory
+      await storage.updateInventoryItem(
+        inventoryItem.id,
+        newTotalAmount,
+        newAvgBuyPrice
+      );
+      
+      // Create transaction
+      const transaction = await storage.createTransaction(transactionData);
+      
+      res.status(201).json(transaction);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create transaction" });
+      }
+    }
+  });
+
+  // Create a new transaction (SELL)
+  app.post("/api/transactions/sell", async (req: Request, res: Response) => {
+    try {
+      const { currencyId, amount, rate, total, notes } = req.body;
+      
+      // Get inventory item
+      const inventoryItem = await storage.getInventoryByCurrencyId(currencyId);
+      
+      if (!inventoryItem) {
+        return res.status(404).json({ message: "Inventory not found for this currency" });
+      }
+      
+      // Check if there's enough in stock
+      if (Number(inventoryItem.amount) < Number(amount)) {
+        return res.status(400).json({ 
+          message: "Not enough currency in stock",
+          available: inventoryItem.amount
+        });
+      }
+      
+      // Calculate profit
+      const profit = Number(amount) * (Number(rate) - Number(inventoryItem.avgBuyPrice));
+      
+      const transactionData = insertTransactionSchema.parse({
+        currencyId,
+        type: "SELL",
+        amount,
+        rate,
+        total,
+        notes,
+        profit
+      });
+      
+      // Update inventory
+      const newAmount = Number(inventoryItem.amount) - Number(amount);
+      await storage.updateInventoryItem(
+        inventoryItem.id,
+        newAmount,
+        Number(inventoryItem.avgBuyPrice) // Keep the same avg buy price
+      );
+      
+      // Create transaction
+      const transaction = await storage.createTransaction(transactionData);
+      
+      res.status(201).json(transaction);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create transaction" });
+      }
+    }
+  });
+
+  // Get today's stats
+  app.get("/api/stats/today", async (_req: Request, res: Response) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const stats = await storage.getDailyStats(today);
+      
+      if (!stats) {
+        return res.status(404).json({ message: "No stats for today" });
+      }
+      
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to retrieve today's stats" });
+    }
+  });
+
+  // Reset inventory
+  app.post("/api/reset", async (_req: Request, res: Response) => {
+    try {
+      await storage.resetInventory();
+      res.json({ message: "Inventory has been reset successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reset inventory" });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
