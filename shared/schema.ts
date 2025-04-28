@@ -70,16 +70,7 @@ export const insertTransactionSchema = createInsertSchema(transactions)
     total: true,
     notes: true,
     profit: true,
-  })
-  .transform((data) => ({
-    ...data,
-    amount: typeof data.amount === 'number' ? data.amount.toString() : data.amount,
-    rate: typeof data.rate === 'number' ? data.rate.toString() : data.rate,
-    total: typeof data.total === 'number' ? data.total.toString() : data.total,
-    profit: data.profit !== undefined && typeof data.profit === 'number' 
-      ? data.profit.toString() 
-      : data.profit,
-  }));
+  });
 
 // Stats schema for daily profit tracking
 export const dailyStats = pgTable("daily_stats", {

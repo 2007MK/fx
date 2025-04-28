@@ -55,7 +55,7 @@ export default function Dashboard() {
                   <Skeleton className="h-7 w-24 mt-1" />
                 ) : (
                   <div className="text-lg font-medium text-green-700 dark:text-green-500 font-mono">
-                    {formatCurrency(todayStats?.profit || 0, 'USD')}
+                    {formatCurrency(todayStats?.profit || 0, 'INR')}
                   </div>
                 )}
               </div>
@@ -121,7 +121,7 @@ export default function Dashboard() {
                   <Skeleton className="h-7 w-32 mt-1" />
                 ) : (
                   <div className="text-lg font-medium text-slate-900 dark:text-slate-100 font-mono">
-                    {formatCurrency(totalInventoryValue, 'USD')}
+                    {formatCurrency(totalInventoryValue, 'INR')}
                   </div>
                 )}
               </div>

@@ -21,7 +21,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add a new currency
   app.post("/api/currencies", async (req: Request, res: Response) => {
     try {
-      const currencyData = insertCurrencySchema.parse(req.body);
+      // Convert numeric values to strings if needed
+      const { code, name, country, currentRate } = req.body;
+      
+      const currencyData = insertCurrencySchema.parse({
+        code, 
+        name, 
+        country,
+        currentRate: typeof currentRate === 'number' ? currentRate.toString() : currentRate
+      });
       
       // Check if currency code already exists
       const existingCurrency = await storage.getCurrencyByCode(currencyData.code);
@@ -34,8 +42,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create inventory entry with 0 amount
       await storage.createInventoryItem({
         currencyId: currency.id,
-        amount: 0,
-        avgBuyPrice: Number(currency.currentRate)
+        amount: "0",
+        avgBuyPrice: currency.currentRate
       });
       
       res.status(201).json(currency);
@@ -43,6 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Invalid currency data", errors: error.errors });
       } else {
+        console.error('Currency creation error:', error);
         res.status(500).json({ message: "Failed to create currency" });
       }
     }
@@ -83,13 +92,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new transaction (BUY)
   app.post("/api/transactions/buy", async (req: Request, res: Response) => {
     try {
-      const transactionData = insertTransactionSchema.parse({
-        ...req.body,
-        type: "BUY",
-        profit: 0 // No profit for buys
-      });
+      // Handle numeric conversions for Zod
+      const { currencyId, amount, rate, total, notes } = req.body;
       
-      const { currencyId, amount, rate, total } = transactionData;
+      const transactionData = insertTransactionSchema.parse({
+        currencyId,
+        type: "BUY",
+        amount: typeof amount === 'number' ? amount.toString() : amount,
+        rate: typeof rate === 'number' ? rate.toString() : rate,
+        total: typeof total === 'number' ? total.toString() : total,
+        notes,
+        profit: "0" // No profit for buys
+      });
       
       // Get the currency
       const currency = await storage.getCurrency(currencyId);
@@ -103,8 +117,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!inventoryItem) {
         inventoryItem = await storage.createInventoryItem({
           currencyId,
-          amount: 0,
-          avgBuyPrice: Number(rate)
+          amount: "0",
+          avgBuyPrice: typeof rate === 'number' ? rate.toString() : rate
         });
       }
       
@@ -131,6 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
       } else {
+        console.error('Buy transaction error:', error);
         res.status(500).json({ message: "Failed to create transaction" });
       }
     }
@@ -162,11 +177,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transactionData = insertTransactionSchema.parse({
         currencyId,
         type: "SELL",
-        amount,
-        rate,
-        total,
+        amount: typeof amount === 'number' ? amount.toString() : amount,
+        rate: typeof rate === 'number' ? rate.toString() : rate,
+        total: typeof total === 'number' ? total.toString() : total,
         notes,
-        profit
+        profit: profit.toString()
       });
       
       // Update inventory
@@ -180,11 +195,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create transaction
       const transaction = await storage.createTransaction(transactionData);
       
+      // Update daily stats with profit
+      const today = new Date().toISOString().split('T')[0];
+      const dailyStats = await storage.getDailyStats(today);
+      
+      if (dailyStats) {
+        await storage.createOrUpdateDailyStats({
+          date: today,
+          profit: (Number(dailyStats.profit) + profit).toString(),
+          transactionCount: dailyStats.transactionCount + 1
+        });
+      } else {
+        await storage.createOrUpdateDailyStats({
+          date: today,
+          profit: profit.toString(),
+          transactionCount: 1
+        });
+      }
+      
       res.status(201).json(transaction);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
       } else {
+        console.error('Sell transaction error:', error);
         res.status(500).json({ message: "Failed to create transaction" });
       }
     }

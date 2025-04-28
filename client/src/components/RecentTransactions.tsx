@@ -135,7 +135,7 @@ export default function RecentTransactions() {
                           {Number(transaction.rate).toFixed(4)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap px-3 py-4 text-sm text-right text-slate-900 dark:text-slate-100 font-mono">
-                          {formatCurrency(transaction.total, 'USD')}
+                          {formatCurrency(transaction.total, 'INR')}
                         </TableCell>
                       </TableRow>
                     ))

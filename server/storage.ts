@@ -75,10 +75,10 @@ export class MemStorage implements IStorage {
   
   private initializeCurrencies() {
     const sampleCurrencies = [
-      { code: "EUR", name: "Euro", country: "European Union", currentRate: 1.0845 },
-      { code: "GBP", name: "British Pound", country: "United Kingdom", currentRate: 1.2507 },
-      { code: "JPY", name: "Japanese Yen", country: "Japan", currentRate: 0.0077 },
-      { code: "CHF", name: "Swiss Franc", country: "Switzerland", currentRate: 1.1160 }
+      { code: "USD", name: "US Dollar", country: "United States", currentRate: 83.45 },
+      { code: "EUR", name: "Euro", country: "European Union", currentRate: 90.12 },
+      { code: "GBP", name: "British Pound", country: "United Kingdom", currentRate: 105.78 },
+      { code: "JPY", name: "Japanese Yen", country: "Japan", currentRate: 0.55 }
     ];
     
     for (const currency of sampleCurrencies) {

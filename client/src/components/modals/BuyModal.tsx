@@ -211,7 +211,7 @@ export default function BuyModal({ open, onClose, initialCurrency }: BuyModalPro
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="total">Total (USD)</Label>
+              <Label htmlFor="total">Total (INR)</Label>
               <Input
                 id="total"
                 type="text"
