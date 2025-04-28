@@ -176,7 +176,7 @@ export default function SellModal({ open, onClose, initialCurrency }: SellModalP
     return (
       <div className={`mt-1 flex items-center text-xs ${textColor}`}>
         <Icon className="h-3 w-3 mr-1" />
-        {profit > 0 ? 'Profit:' : 'Loss:'} {formatCurrency(Math.abs(profit), 'USD')}
+        {profit > 0 ? 'Profit:' : 'Loss:'} {formatCurrency(Math.abs(profit), 'INR')}
       </div>
     );
   };
@@ -259,7 +259,7 @@ export default function SellModal({ open, onClose, initialCurrency }: SellModalP
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sell-total">Total (USD)</Label>
+              <Label htmlFor="sell-total">Total (INR)</Label>
               <Input
                 id="sell-total"
                 type="text"

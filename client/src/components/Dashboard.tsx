@@ -2,6 +2,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrencies } from "@/hooks/useCurrencies";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/currency";
 import { TrendingUp, Receipt, Package2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 export default function Dashboard() {
   const { isLoading: isLoadingCurrencies, currencies } = useCurrencies();
   const { isLoading: isLoadingTransactions, transactions } = useTransactions();
+  const { toast } = useToast();
 
   // Get today's stats
   const { data: todayStats, isLoading: isLoadingStats } = useQuery({
@@ -96,12 +98,19 @@ export default function Dashboard() {
           </CardContent>
           <CardFooter className="bg-slate-50 dark:bg-slate-800/50 px-6 py-3">
             <div className="text-sm">
-              <span className="font-medium text-primary-600 hover:text-primary-500 flex items-center">
+              <a 
+                href="#transactions"
+                className="font-medium text-primary-600 hover:text-primary-500 flex items-center cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('transactions-section')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
                 View all transactions 
                 <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
-              </span>
+              </a>
             </div>
           </CardFooter>
         </Card>
@@ -135,7 +144,29 @@ export default function Dashboard() {
                 </svg>
                 Last updated: {lastUpdated}
               </div>
-              <button className="text-primary-600 dark:text-primary-400 flex items-center">
+              <button 
+                className="text-primary-600 dark:text-primary-400 flex items-center cursor-pointer"
+                onClick={() => {
+                  const reportData = {
+                    date: new Date().toISOString().split('T')[0],
+                    totalValue: totalInventoryValue,
+                    currencies: currencies.filter(c => c.inventory)
+                  };
+                  const reportBlob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(reportBlob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `currency-inventory-report-${reportData.date}.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  toast({
+                    title: "Report Generated",
+                    description: "Your inventory report has been downloaded.",
+                  });
+                }}
+              >
                 <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>

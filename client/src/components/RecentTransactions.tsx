@@ -45,7 +45,7 @@ export default function RecentTransactions() {
   }
 
   return (
-    <div className="px-4 mt-8 sm:px-0">
+    <div id="transactions-section" className="px-4 mt-8 sm:px-0 scroll-mt-20">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h2 className="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100">
@@ -115,7 +115,7 @@ export default function RecentTransactions() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap px-3 py-4 text-sm">
                           <Badge 
-                            variant={transaction.type === "BUY" ? "outline" : "success"}
+                            variant="outline"
                             className={
                               transaction.type === "BUY" 
                                 ? "bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300" 
