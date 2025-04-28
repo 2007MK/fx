@@ -150,7 +150,10 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
                             </div>
                           </TableCell>
                           <TableCell className="px-6 py-4 whitespace-nowrap text-right">
-                            <Badge variant={isProfit ? "success" : "destructive"} className="ml-auto">
+                            <Badge 
+                              variant="outline" 
+                              className={`ml-auto ${isProfit ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'}`}
+                            >
                               {isProfit ? '+' : ''}{formatPercentage(profitLossPercentage)}
                             </Badge>
                           </TableCell>

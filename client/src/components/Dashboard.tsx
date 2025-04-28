@@ -13,7 +13,11 @@ export default function Dashboard() {
   const { toast } = useToast();
 
   // Get today's stats
-  const { data: todayStats, isLoading: isLoadingStats } = useQuery({
+  const { data: todayStats, isLoading: isLoadingStats } = useQuery<{
+    date: string;
+    profit: number;
+    transactionCount: number;
+  }>({
     queryKey: ['/api/stats/today'],
   });
 
