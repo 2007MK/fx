@@ -72,9 +72,6 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
                       Current Rate
                     </TableHead>
                     <TableHead className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Profit/Loss
-                    </TableHead>
-                    <TableHead className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -100,9 +97,6 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
                         </TableCell>
                         <TableCell className="px-6 py-4 whitespace-nowrap text-right">
                           <Skeleton className="h-4 w-16 ml-auto" />
-                        </TableCell>
-                        <TableCell className="px-6 py-4 whitespace-nowrap text-right">
-                          <Skeleton className="h-5 w-16 rounded-full ml-auto" />
                         </TableCell>
                         <TableCell className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end">
@@ -148,14 +142,6 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
                             <div className="text-sm font-medium font-mono">
                               {Number(currency.currentRate).toFixed(4)}
                             </div>
-                          </TableCell>
-                          <TableCell className="px-6 py-4 whitespace-nowrap text-right">
-                            <Badge 
-                              variant="outline" 
-                              className={`ml-auto ${isProfit ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'}`}
-                            >
-                              {isProfit ? '+' : ''}{formatPercentage(profitLossPercentage)}
-                            </Badge>
                           </TableCell>
                           <TableCell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <Button
