@@ -25,12 +25,12 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
   // Helper function to calculate profit/loss percentage
   const calculateProfitLossPercentage = (currency: Currency) => {
     if (!currency.inventory) return 0;
-    
+
     const currentRate = Number(currency.currentRate);
     const avgBuyPrice = Number(currency.inventory.avgBuyPrice);
-    
+
     if (avgBuyPrice === 0) return 0;
-    
+
     return ((currentRate - avgBuyPrice) / avgBuyPrice) * 100;
   };
 
@@ -51,7 +51,7 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
       <h2 className="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100 mb-4">
         Currency Inventory
       </h2>
-      
+
       <div className="flex flex-col">
         <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
@@ -110,7 +110,7 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
                     currencies.map((currency) => {
                       const profitLossPercentage = calculateProfitLossPercentage(currency);
                       const isProfit = profitLossPercentage >= 0;
-                      
+
                       return (
                         <TableRow key={currency.id}>
                           <TableCell className="px-6 py-4 whitespace-nowrap">
@@ -120,7 +120,9 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                  <span className="text-lg">{new Intl.Locale(currency.country.toLowerCase()).region}</span>
+                                  <span className="text-lg">
+                                    {currency.code.slice(0, 2).split('').map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('')}
+                                  </span>
                                   {currency.name}
                                 </div>
                                 <div className="text-sm text-slate-500 dark:text-slate-400">
