@@ -86,10 +86,10 @@ export class MemStorage implements IStorage {
   
   private initializeCurrencies() {
     const sampleCurrencies = [
-      { code: "USD", name: "US Dollar", country: "United States", currentRate: 83.45 },
-      { code: "EUR", name: "Euro", country: "European Union", currentRate: 90.12 },
-      { code: "GBP", name: "British Pound", country: "United Kingdom", currentRate: 105.78 },
-      { code: "JPY", name: "Japanese Yen", country: "Japan", currentRate: 0.55 }
+      { code: "USD", name: "US Dollar", country: "United States", currentRate: "83.45" },
+      { code: "EUR", name: "Euro", country: "European Union", currentRate: "90.12" },
+      { code: "GBP", name: "British Pound", country: "United Kingdom", currentRate: "105.78" },
+      { code: "JPY", name: "Japanese Yen", country: "Japan", currentRate: "0.55" }
     ];
     
     for (const currency of sampleCurrencies) {
@@ -98,8 +98,9 @@ export class MemStorage implements IStorage {
       // Create initial inventory with 0 amount
       this.createInventoryItem({
         currencyId: newCurrency.id,
-        amount: 0,
+        amount: "0",
         avgBuyPrice: currency.currentRate,
+        totalValue: "0"
       });
     }
     

@@ -70,7 +70,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createInventoryItem({
         currencyId: currency.id,
         amount: "0",
-        avgBuyPrice: currency.currentRate
+        avgBuyPrice: currency.currentRate,
+        totalValue: "0"
       });
       
       res.status(201).json(currency);
@@ -145,7 +146,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inventoryItem = await storage.createInventoryItem({
           currencyId,
           amount: "0",
-          avgBuyPrice: typeof rate === 'number' ? rate.toString() : rate
+          avgBuyPrice: typeof rate === 'number' ? rate.toString() : rate,
+          totalValue: "0"
         });
       }
       
