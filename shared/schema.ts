@@ -38,6 +38,7 @@ export const inventory = pgTable("inventory", {
   currencyId: integer("currency_id").notNull(),
   amount: numeric("amount").notNull(),
   avgBuyPrice: numeric("avg_buy_price").notNull(),
+  totalValue: numeric("total_value").notNull(),
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
 });
 
@@ -46,6 +47,25 @@ export const insertInventorySchema = createInsertSchema(inventory)
     currencyId: true,
     amount: true,
     avgBuyPrice: true,
+    totalValue: true,
+  });
+
+// Inventory Batches for batch-wise tracking
+export const inventoryBatches = pgTable("inventory_batches", {
+  id: serial("id").primaryKey(),
+  currencyId: integer("currency_id").notNull(),
+  amount: numeric("amount").notNull(), // Original amount
+  buyPrice: numeric("buy_price").notNull(), // Buy price for this batch
+  remainingAmount: numeric("remaining_amount").notNull(), // Amount left in this batch
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+});
+
+export const insertInventoryBatchSchema = createInsertSchema(inventoryBatches)
+  .pick({
+    currencyId: true,
+    amount: true,
+    buyPrice: true,
+    remainingAmount: true,
   });
 
 // Transaction schema
@@ -95,6 +115,9 @@ export type InsertCurrency = z.infer<typeof insertCurrencySchema>;
 
 export type Inventory = typeof inventory.$inferSelect;
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
+
+export type InventoryBatch = typeof inventoryBatches.$inferSelect;
+export type InsertInventoryBatch = z.infer<typeof insertInventoryBatchSchema>;
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;

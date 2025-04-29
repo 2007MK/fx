@@ -2,6 +2,7 @@ import {
   users, type User, type InsertUser,
   currencies, type Currency, type InsertCurrency,
   inventory, type Inventory, type InsertInventory,
+  inventoryBatches, type InventoryBatch, type InsertInventoryBatch,
   transactions, type Transaction, type InsertTransaction,
   dailyStats, type DailyStats, type InsertDailyStats,
   type CurrencyWithInventory
@@ -9,6 +10,9 @@ import {
 
 // Storage interface
 export interface IStorage {
+  // Initialization
+  initialize?(): Promise<void>;
+  
   // User methods (keeping existing ones)
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -26,12 +30,19 @@ export interface IStorage {
   getInventoryItem(id: number): Promise<Inventory | undefined>;
   getInventoryByCurrencyId(currencyId: number): Promise<Inventory | undefined>;
   createInventoryItem(item: InsertInventory): Promise<Inventory>;
-  updateInventoryItem(id: number, amount: number, avgBuyPrice: number): Promise<Inventory | undefined>;
+  updateInventoryItem(id: number, amount: number, avgBuyPrice: number, totalValue?: number): Promise<Inventory | undefined>;
+  
+  // Inventory batch methods
+  getInventoryBatches?(currencyId: number): Promise<InventoryBatch[]>;
+  createInventoryBatch?(batch: InsertInventoryBatch): Promise<InventoryBatch>;
+  updateInventoryBatch?(id: number, remainingAmount: number): Promise<InventoryBatch>;
   
   // Transaction methods
   getTransactions(): Promise<Transaction[]>;
   getTransactionsByCurrencyId(currencyId: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  updateTransaction?(id: number, updates: Partial<Transaction>): Promise<Transaction | undefined>;
+  deleteTransaction?(id: number): Promise<boolean>;
   
   // Stats methods
   getDailyStats(date: string): Promise<DailyStats | undefined>;
@@ -188,14 +199,18 @@ export class MemStorage implements IStorage {
     return inventoryItem;
   }
   
-  async updateInventoryItem(id: number, amount: number, avgBuyPrice: number): Promise<Inventory | undefined> {
+  async updateInventoryItem(id: number, amount: number, avgBuyPrice: number, totalValue?: number): Promise<Inventory | undefined> {
     const inventoryItem = this.inventoryItems.get(id);
     if (!inventoryItem) return undefined;
+    
+    // Calculate total value if not provided
+    const actualTotalValue = totalValue !== undefined ? totalValue : amount * avgBuyPrice;
     
     const updatedItem: Inventory = {
       ...inventoryItem,
       amount,
       avgBuyPrice,
+      totalValue: actualTotalValue,
       lastUpdated: new Date()
     };
     
