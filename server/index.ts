@@ -1,6 +1,19 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { DatabaseStorage } from "./dbStorage";
+import { storage } from "./storage";
+
+// Set up the database storage
+(async () => {
+  // Replace storage implementation with DatabaseStorage
+  Object.assign(storage, new DatabaseStorage());
+  
+  // Initialize the database if needed
+  if (storage.initialize) {
+    await storage.initialize();
+  }
+})();
 
 const app = express();
 app.use(express.json());

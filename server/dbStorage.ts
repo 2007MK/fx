@@ -140,9 +140,9 @@ export class DatabaseStorage implements IStorage {
     const [updatedItem] = await db
       .update(inventory)
       .set({ 
-        amount, 
-        avgBuyPrice,
-        totalValue: actualTotalValue,
+        amount: toDbNumber(amount), 
+        avgBuyPrice: toDbNumber(avgBuyPrice),
+        totalValue: toDbNumber(actualTotalValue),
         lastUpdated: new Date() 
       })
       .where(eq(inventory.id, id))
@@ -176,7 +176,7 @@ export class DatabaseStorage implements IStorage {
   async updateInventoryBatch(id: number, remainingAmount: number): Promise<InventoryBatch> {
     const [updatedBatch] = await db
       .update(inventoryBatches)
-      .set({ remainingAmount })
+      .set({ remainingAmount: toDbNumber(remainingAmount) })
       .where(eq(inventoryBatches.id, id))
       .returning();
     return updatedBatch;
@@ -216,11 +216,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(dailyStats.date, today));
     
     if (dailyStat) {
-      const profit = transaction.profit || 0;
+      const profit = transaction.profit || "0";
+      const newProfit = new Decimal(dailyStat.profit).plus(profit).toString();
       await db
         .update(dailyStats)
         .set({
-          profit: new Decimal(dailyStat.profit).plus(profit).toNumber(),
+          profit: newProfit,
           transactionCount: dailyStat.transactionCount + 1
         })
         .where(eq(dailyStats.date, today));
@@ -229,7 +230,7 @@ export class DatabaseStorage implements IStorage {
         .insert(dailyStats)
         .values({
           date: today,
-          profit: transaction.profit || 0,
+          profit: transaction.profit || toDbNumber(0),
           transactionCount: 1
         });
     }
@@ -326,7 +327,7 @@ export class DatabaseStorage implements IStorage {
         await this.updateInventoryItem(
           inventoryItem.id, 
           0, 
-          Number(currency.currentRate),
+          fromDbNumber(currency.currentRate),
           0 // Total value is 0
         );
       }
@@ -344,7 +345,7 @@ export class DatabaseStorage implements IStorage {
     const today = new Date().toISOString().split('T')[0];
     await this.createOrUpdateDailyStats({
       date: today,
-      profit: 0,
+      profit: toDbNumber(0),
       transactionCount: 0
     });
   }
