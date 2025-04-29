@@ -25,10 +25,10 @@ export default function Dashboard() {
     queryKey: ['/api/stats/today'],
   });
 
-  // Calculate total inventory value
+  // Calculate total inventory value based on average buying price
   const totalInventoryValue = currencies.reduce((total, currency) => {
     if (currency.inventory) {
-      return total + Number(currency.inventory.amount) * Number(currency.currentRate);
+      return total + Number(currency.inventory.amount) * Number(currency.inventory.avgBuyPrice);
     }
     return total;
   }, 0);
