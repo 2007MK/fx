@@ -121,7 +121,11 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
                                   <span className="text-lg">
-                                    {currency.code.slice(0, 2).split('').map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('')}
+                                    {currency.country === 'United States' ? '🇺🇸' :
+                                     currency.country === 'European Union' ? '🇪🇺' :
+                                     currency.country === 'United Kingdom' ? '🇬🇧' :
+                                     currency.country === 'Japan' ? '🇯🇵' :
+                                     currency.country === 'Switzerland' ? '🇨🇭' : '🏳️'}
                                   </span>
                                   {currency.name}
                                 </div>
