@@ -58,12 +58,14 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private currencies: Map<number, Currency>;
   private inventoryItems: Map<number, Inventory>;
+  private inventoryBatches: Map<number, InventoryBatch>;
   private transactionsList: Map<number, Transaction>;
   private stats: Map<string, DailyStats>;
   
   private userCurrentId: number;
   private currencyCurrentId: number;
   private inventoryCurrentId: number;
+  private inventoryBatchCurrentId: number;
   private transactionCurrentId: number;
   private statsCurrentId: number;
 
