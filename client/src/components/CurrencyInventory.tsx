@@ -119,7 +119,8 @@ export default function CurrencyInventory({ onQuickBuy, onQuickSell }: CurrencyI
                                 {currency.code}
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                <div className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                  <span className="text-lg">{new Intl.Locale(currency.country.toLowerCase()).region}</span>
                                   {currency.name}
                                 </div>
                                 <div className="text-sm text-slate-500 dark:text-slate-400">
