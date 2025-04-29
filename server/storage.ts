@@ -1,4 +1,3 @@
-import { database } from './database';
 import { 
   users, type User, type InsertUser,
   currencies, type Currency, type InsertCurrency,
@@ -43,154 +42,277 @@ export interface IStorage {
   resetInventory(): Promise<void>;
 }
 
-// SQLite storage implementation
-export class SqliteStorage implements IStorage {
+// In-memory storage implementation
+export class MemStorage implements IStorage {
+  private users: Map<number, User>;
+  private currencies: Map<number, Currency>;
+  private inventoryItems: Map<number, Inventory>;
+  private transactionsList: Map<number, Transaction>;
+  private stats: Map<string, DailyStats>;
+  
+  private userCurrentId: number;
+  private currencyCurrentId: number;
+  private inventoryCurrentId: number;
+  private transactionCurrentId: number;
+  private statsCurrentId: number;
+
+  constructor() {
+    this.users = new Map();
+    this.currencies = new Map();
+    this.inventoryItems = new Map();
+    this.transactionsList = new Map();
+    this.stats = new Map();
+    
+    this.userCurrentId = 1;
+    this.currencyCurrentId = 1;
+    this.inventoryCurrentId = 1;
+    this.transactionCurrentId = 1;
+    this.statsCurrentId = 1;
+    
+    // Initialize with some sample currencies
+    this.initializeCurrencies();
+  }
+  
+  private initializeCurrencies() {
+    const sampleCurrencies = [
+      { code: "USD", name: "US Dollar", country: "United States", currentRate: 83.45 },
+      { code: "EUR", name: "Euro", country: "European Union", currentRate: 90.12 },
+      { code: "GBP", name: "British Pound", country: "United Kingdom", currentRate: 105.78 },
+      { code: "JPY", name: "Japanese Yen", country: "Japan", currentRate: 0.55 }
+    ];
+    
+    for (const currency of sampleCurrencies) {
+      const newCurrency = this.createCurrency(currency);
+      
+      // Create initial inventory with 0 amount
+      this.createInventoryItem({
+        currencyId: newCurrency.id,
+        amount: 0,
+        avgBuyPrice: currency.currentRate,
+      });
+    }
+    
+    // Initialize today's stats
+    const today = new Date().toISOString().split('T')[0];
+    this.createOrUpdateDailyStats({
+      date: today,
+      profit: 0,
+      transactionCount: 0
+    });
+  }
+
+  // User methods
   async getUser(id: number): Promise<User | undefined> {
-    const stmt = database.db.prepare('SELECT * FROM users WHERE id = ?');
-    return stmt.get(id);
+    return this.users.get(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const stmt = database.db.prepare('SELECT * FROM users WHERE username = ?');
-    return stmt.get(username);
-  }
-
-  async createUser(user: InsertUser): Promise<User> {
-    const stmt = database.db.prepare(
-      'INSERT INTO users (username, password) VALUES (?, ?)'
+    return Array.from(this.users.values()).find(
+      (user) => user.username === username,
     );
-    const result = stmt.run(user.username, user.password);
-    return { id: result.lastInsertRowid as number, ...user };
   }
 
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.userCurrentId++;
+    const user: User = { ...insertUser, id };
+    this.users.set(id, user);
+    return user;
+  }
+  
+  // Currency methods
   async getCurrencies(): Promise<Currency[]> {
-    const stmt = database.db.prepare('SELECT * FROM currencies');
-    return stmt.all();
+    return Array.from(this.currencies.values());
   }
-
+  
   async getCurrency(id: number): Promise<Currency | undefined> {
-    const stmt = database.db.prepare('SELECT * FROM currencies WHERE id = ?');
-    return stmt.get(id);
+    return this.currencies.get(id);
   }
-
+  
   async getCurrencyByCode(code: string): Promise<Currency | undefined> {
-    const stmt = database.db.prepare('SELECT * FROM currencies WHERE code = ?');
-    return stmt.get(code);
-  }
-
-  async createCurrency(currency: InsertCurrency): Promise<Currency> {
-    const stmt = database.db.prepare(
-      'INSERT INTO currencies (code, name, country, current_rate) VALUES (?, ?, ?, ?)'
+    return Array.from(this.currencies.values()).find(
+      (currency) => currency.code === code
     );
-    const result = stmt.run(
-      currency.code,
-      currency.name,
-      currency.country,
-      currency.currentRate
-    );
-    return { id: result.lastInsertRowid as number, ...currency };
   }
-
+  
+  async createCurrency(insertCurrency: InsertCurrency): Promise<Currency> {
+    const id = this.currencyCurrentId++;
+    const now = new Date();
+    const currency: Currency = { 
+      ...insertCurrency, 
+      id,
+      lastUpdated: now
+    };
+    this.currencies.set(id, currency);
+    return currency;
+  }
+  
   async updateCurrencyRate(id: number, rate: number): Promise<Currency | undefined> {
-    const stmt = database.db.prepare(
-      'UPDATE currencies SET current_rate = ?, last_updated = CURRENT_TIMESTAMP WHERE id = ?'
-    );
-    stmt.run(rate, id);
-    return this.getCurrency(id);
+    const currency = this.currencies.get(id);
+    if (!currency) return undefined;
+    
+    const updatedCurrency: Currency = {
+      ...currency,
+      currentRate: rate,
+      lastUpdated: new Date()
+    };
+    
+    this.currencies.set(id, updatedCurrency);
+    return updatedCurrency;
   }
-
+  
+  // Inventory methods
   async getInventoryItems(): Promise<Inventory[]> {
-    const stmt = database.db.prepare('SELECT * FROM inventory');
-    return stmt.all();
+    return Array.from(this.inventoryItems.values());
   }
-
+  
   async getInventoryItem(id: number): Promise<Inventory | undefined> {
-    const stmt = database.db.prepare('SELECT * FROM inventory WHERE id = ?');
-    return stmt.get(id);
+    return this.inventoryItems.get(id);
   }
-
+  
   async getInventoryByCurrencyId(currencyId: number): Promise<Inventory | undefined> {
-    const stmt = database.db.prepare('SELECT * FROM inventory WHERE currency_id = ?');
-    return stmt.get(currencyId);
-  }
-
-  async createInventoryItem(item: InsertInventory): Promise<Inventory> {
-    const stmt = database.db.prepare(
-      'INSERT INTO inventory (currency_id, amount, avg_buy_price) VALUES (?, ?, ?)'
+    return Array.from(this.inventoryItems.values()).find(
+      (item) => item.currencyId === currencyId
     );
-    const result = stmt.run(item.currencyId, item.amount, item.avgBuyPrice);
-    return { id: result.lastInsertRowid as number, ...item };
   }
-
+  
+  async createInventoryItem(insertInventory: InsertInventory): Promise<Inventory> {
+    const id = this.inventoryCurrentId++;
+    const now = new Date();
+    const inventoryItem: Inventory = {
+      ...insertInventory,
+      id,
+      lastUpdated: now
+    };
+    
+    this.inventoryItems.set(id, inventoryItem);
+    return inventoryItem;
+  }
+  
   async updateInventoryItem(id: number, amount: number, avgBuyPrice: number): Promise<Inventory | undefined> {
-    const stmt = database.db.prepare(
-      'UPDATE inventory SET amount = ?, avg_buy_price = ?, last_updated = CURRENT_TIMESTAMP WHERE id = ?'
-    );
-    stmt.run(amount, avgBuyPrice, id);
-    return this.getInventoryItem(id);
+    const inventoryItem = this.inventoryItems.get(id);
+    if (!inventoryItem) return undefined;
+    
+    const updatedItem: Inventory = {
+      ...inventoryItem,
+      amount,
+      avgBuyPrice,
+      lastUpdated: new Date()
+    };
+    
+    this.inventoryItems.set(id, updatedItem);
+    return updatedItem;
   }
-
+  
+  // Transaction methods
   async getTransactions(): Promise<Transaction[]> {
-    const stmt = database.db.prepare('SELECT * FROM transactions ORDER BY timestamp DESC');
-    return stmt.all();
+    return Array.from(this.transactionsList.values())
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()); // Newest first
   }
-
+  
   async getTransactionsByCurrencyId(currencyId: number): Promise<Transaction[]> {
-    const stmt = database.db.prepare(
-      'SELECT * FROM transactions WHERE currency_id = ? ORDER BY timestamp DESC'
-    );
-    return stmt.all(currencyId);
+    return Array.from(this.transactionsList.values())
+      .filter(transaction => transaction.currencyId === currencyId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()); // Newest first
   }
-
-  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    const stmt = database.db.prepare(
-      'INSERT INTO transactions (currency_id, type, amount, rate, total, notes, profit) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    );
-    const result = stmt.run(
-      transaction.currencyId,
-      transaction.type,
-      transaction.amount,
-      transaction.rate,
-      transaction.total,
-      transaction.notes,
-      transaction.profit
-    );
-    return { id: result.lastInsertRowid as number, ...transaction };
+  
+  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
+    const id = this.transactionCurrentId++;
+    const now = new Date();
+    const transaction: Transaction = {
+      ...insertTransaction,
+      id,
+      timestamp: now
+    };
+    
+    this.transactionsList.set(id, transaction);
+    
+    // Update daily stats
+    const today = now.toISOString().split('T')[0];
+    const dailyStat = await this.getDailyStats(today);
+    
+    if (dailyStat) {
+      const profit = transaction.profit || 0;
+      await this.createOrUpdateDailyStats({
+        date: today,
+        profit: Number(dailyStat.profit) + Number(profit),
+        transactionCount: dailyStat.transactionCount + 1
+      });
+    } else {
+      await this.createOrUpdateDailyStats({
+        date: today,
+        profit: Number(transaction.profit || 0),
+        transactionCount: 1
+      });
+    }
+    
+    return transaction;
   }
-
+  
+  // Stats methods
   async getDailyStats(date: string): Promise<DailyStats | undefined> {
-    const stmt = database.db.prepare('SELECT * FROM daily_stats WHERE date = ?');
-    return stmt.get(date);
+    return this.stats.get(date);
   }
-
-  async createOrUpdateDailyStats(stats: InsertDailyStats): Promise<DailyStats> {
-    const stmt = database.db.prepare(`
-      INSERT INTO daily_stats (date, profit, transaction_count)
-      VALUES (?, ?, ?)
-      ON CONFLICT(date) DO UPDATE SET
-        profit = excluded.profit,
-        transaction_count = excluded.transaction_count
-    `);
-    stmt.run(stats.date, stats.profit, stats.transactionCount);
-    return this.getDailyStats(stats.date) as Promise<DailyStats>;
+  
+  async createOrUpdateDailyStats(insertStats: InsertDailyStats): Promise<DailyStats> {
+    const existingStat = this.stats.get(insertStats.date);
+    
+    if (existingStat) {
+      const updatedStat: DailyStats = {
+        ...existingStat,
+        profit: insertStats.profit,
+        transactionCount: insertStats.transactionCount
+      };
+      this.stats.set(insertStats.date, updatedStat);
+      return updatedStat;
+    }
+    
+    const id = this.statsCurrentId++;
+    const stat: DailyStats = {
+      ...insertStats,
+      id
+    };
+    
+    this.stats.set(insertStats.date, stat);
+    return stat;
   }
-
+  
+  // Combined methods
   async getCurrenciesWithInventory(): Promise<CurrencyWithInventory[]> {
-    const stmt = database.db.prepare(`
-      SELECT c.*, i.*
-      FROM currencies c
-      LEFT JOIN inventory i ON c.id = i.currency_id
-    `);
-    return stmt.all();
+    const currencies = await this.getCurrencies();
+    const result: CurrencyWithInventory[] = [];
+    
+    for (const currency of currencies) {
+      const inventory = await this.getInventoryByCurrencyId(currency.id);
+      result.push({
+        ...currency,
+        inventory
+      });
+    }
+    
+    return result;
   }
-
+  
   async resetInventory(): Promise<void> {
-    database.db.transaction(() => {
-      database.db.prepare('DELETE FROM transactions').run();
-      database.db.prepare('UPDATE inventory SET amount = 0').run();
-      database.db.prepare('UPDATE daily_stats SET profit = 0, transaction_count = 0').run();
-    })();
+    // Reset all inventory amounts to 0
+    for (const [id, item] of this.inventoryItems.entries()) {
+      const currency = await this.getCurrency(item.currencyId);
+      if (currency) {
+        await this.updateInventoryItem(id, 0, Number(currency.currentRate));
+      }
+    }
+    
+    // Clear all transactions
+    this.transactionsList.clear();
+    this.transactionCurrentId = 1;
+    
+    // Reset today's stats
+    const today = new Date().toISOString().split('T')[0];
+    await this.createOrUpdateDailyStats({
+      date: today,
+      profit: 0,
+      transactionCount: 0
+    });
   }
 }
 
-export const storage = new SqliteStorage();
+export const storage = new MemStorage();
