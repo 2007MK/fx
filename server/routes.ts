@@ -2,12 +2,33 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
+
+// Add test currency on startup if none exist
+async function addTestCurrencyIfEmpty() {
+  const currencies = await storage.getCurrencies();
+  if (currencies.length === 0) {
+    const usdCurrency = await storage.createCurrency({
+      code: "USD",
+      name: "US Dollar",
+      country: "United States",
+      currentRate: "82.50"
+    });
+    
+    await storage.createInventoryItem({
+      currencyId: usdCurrency.id,
+      amount: "0",
+      avgBuyPrice: usdCurrency.currentRate
+    });
+  }
+}
+
 import {
   insertCurrencySchema,
   insertTransactionSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  await addTestCurrencyIfEmpty();
   // Get all currencies with inventory info
   app.get("/api/currencies", async (_req: Request, res: Response) => {
     try {
