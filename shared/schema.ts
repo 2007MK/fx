@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, numeric, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 // User schema (keeping the existing one)
 export const users = pgTable("users", {

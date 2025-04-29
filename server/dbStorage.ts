@@ -12,6 +12,16 @@ import { eq, desc, and, isNull, sql } from "drizzle-orm";
 import { IStorage } from "./storage";
 import { Decimal } from "decimal.js";
 
+// Helper function to convert number to string for DB operations
+function toDbNumber(value: number): string {
+  return value.toString();
+}
+
+// Helper function to convert string from DB to number for calculations
+function fromDbNumber(value: string): number {
+  return new Decimal(value).toNumber();
+}
+
 // Database storage implementation
 export class DatabaseStorage implements IStorage {
   
@@ -21,10 +31,10 @@ export class DatabaseStorage implements IStorage {
     
     if (existingCurrencies.length === 0) {
       const sampleCurrencies = [
-        { code: "USD", name: "US Dollar", country: "United States", currentRate: 83.45 },
-        { code: "EUR", name: "Euro", country: "European Union", currentRate: 90.12 },
-        { code: "GBP", name: "British Pound", country: "United Kingdom", currentRate: 105.78 },
-        { code: "JPY", name: "Japanese Yen", country: "Japan", currentRate: 0.55 }
+        { code: "USD", name: "US Dollar", country: "United States", currentRate: toDbNumber(83.45) },
+        { code: "EUR", name: "Euro", country: "European Union", currentRate: toDbNumber(90.12) },
+        { code: "GBP", name: "British Pound", country: "United Kingdom", currentRate: toDbNumber(105.78) },
+        { code: "JPY", name: "Japanese Yen", country: "Japan", currentRate: toDbNumber(0.55) }
       ];
       
       for (const currencyData of sampleCurrencies) {
@@ -33,9 +43,9 @@ export class DatabaseStorage implements IStorage {
         // Create initial inventory with 0 amount
         await this.createInventoryItem({
           currencyId: currency.id,
-          amount: 0,
+          amount: toDbNumber(0),
           avgBuyPrice: currencyData.currentRate,
-          totalValue: 0
+          totalValue: toDbNumber(0)
         });
       }
       
@@ -43,7 +53,7 @@ export class DatabaseStorage implements IStorage {
       const today = new Date().toISOString().split('T')[0];
       await this.createOrUpdateDailyStats({
         date: today,
-        profit: 0,
+        profit: toDbNumber(0),
         transactionCount: 0
       });
     }
@@ -92,7 +102,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedCurrency] = await db
       .update(currencies)
       .set({ 
-        currentRate: rate, 
+        currentRate: toDbNumber(rate), 
         lastUpdated: new Date() 
       })
       .where(eq(currencies.id, id))
