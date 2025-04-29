@@ -67,8 +67,8 @@ export default function AuthPage() {
 
   return (
     <div className="flex min-h-screen bg-muted/30">
-      {/* Left side: Auth form */}
-      <div className="flex items-center justify-center w-full md:w-1/2 p-6">
+      {/* Auth form */}
+      <div className="flex items-center justify-center w-full p-6">
         <Tabs
           defaultValue="login"
           className="w-full max-w-md"
@@ -140,7 +140,7 @@ export default function AuthPage() {
               <CardHeader>
                 <CardTitle className="text-2xl">Create Account</CardTitle>
                 <CardDescription>
-                  Register to start managing your currency inventory
+                  Register to access the application
                 </CardDescription>
               </CardHeader>
               <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)}>
@@ -188,47 +188,6 @@ export default function AuthPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-
-      {/* Right side: Hero/Info */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-primary to-primary-foreground text-white flex-col justify-center p-12">
-        <div className="max-w-md mx-auto">
-          <h1 className="text-4xl font-bold mb-6">
-            Currency Tracker
-          </h1>
-          <p className="text-xl mb-8">
-            Your complete solution for managing foreign currency inventory, transactions, and profit tracking.
-          </p>
-          <ul className="space-y-3">
-            <li className="flex items-center">
-              <div className="mr-3 text-white bg-white/20 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-              </div>
-              Track currency inventory and values
-            </li>
-            <li className="flex items-center">
-              <div className="mr-3 text-white bg-white/20 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-              </div>
-              Record buy and sell transactions
-            </li>
-            <li className="flex items-center">
-              <div className="mr-3 text-white bg-white/20 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-              </div>
-              Calculate profits and monitor performance
-            </li>
-          </ul>
-        </div>
       </div>
     </div>
   );
