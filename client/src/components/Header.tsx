@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Settings, RefreshCw, HelpCircle, PlusCircle } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
+import { AuthHeader } from "@/components/auth-header";
 
 interface HeaderProps {
   onAddNewCurrency: () => void;
@@ -106,6 +107,10 @@ export default function Header({ onAddNewCurrency, onResetInventory }: HeaderPro
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            <div className="ml-3">
+              <AuthHeader />
+            </div>
           </div>
         </div>
       </div>

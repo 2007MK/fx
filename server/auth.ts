@@ -5,96 +5,102 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
-import connectPg from "connect-pg-simple";
-import { pool } from "./db";
+import { User } from "@shared/schema";
+import createMemoryStore from "memorystore";
 
+// Extend Express.User to include our app's User type
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User extends User {}
   }
 }
 
 const scryptAsync = promisify(scrypt);
+const MemoryStore = createMemoryStore(session);
 
-// Helper for hashing passwords
-async function hashPassword(password: string) {
+// Hash password utility function
+async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
 }
 
-// Helper for comparing passwords securely
-async function comparePasswords(supplied: string, stored: string) {
+// Compare passwords utility function
+async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-export function setupAuth(app: Express) {
-  // Create PostgreSQL session store
-  const PostgresSessionStore = connectPg(session);
-  
-  // Session configuration
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "currency-tracker-secret-key",
+export function setupAuth(app: Express): void {
+  // Set up session middleware
+  const sessionMiddleware = session({
+    secret: process.env.SESSION_SECRET || "development-session-secret",
     resave: false,
     saveUninitialized: false,
-    store: new PostgresSessionStore({
-      pool,
-      createTableIfMissing: true,
-      tableName: 'sessions'
-    }),
     cookie: {
+      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-    }
-  };
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+    },
+    store: new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    }),
+  });
 
-  // Trust proxy in production
-  if (process.env.NODE_ENV === "production") {
-    app.set("trust proxy", 1);
-  }
-  
-  // Initialize session and passport
-  app.use(session(sessionSettings));
+  app.use(sessionMiddleware);
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Configure passport local strategy
+  // Configure Passport strategy
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false);
-        } else {
-          return done(null, user);
+        
+        if (!user) {
+          return done(null, false, { message: "Incorrect username" });
         }
+        
+        const isValidPassword = await comparePasswords(password, user.password);
+        
+        if (!isValidPassword) {
+          return done(null, false, { message: "Incorrect password" });
+        }
+        
+        // Don't pass password to the client
+        const { password: _, ...userWithoutPassword } = user;
+        return done(null, userWithoutPassword as any);
       } catch (err) {
         return done(err);
       }
-    }),
+    })
   );
 
-  // Serialize user to session
-  passport.serializeUser((user, done) => done(null, user.id));
-  
-  // Deserialize user from session
+  // Configure Passport serialization
+  passport.serializeUser((user, done) => {
+    done(null, user.id);
+  });
+
   passport.deserializeUser(async (id: number, done) => {
     try {
       const user = await storage.getUser(id);
-      done(null, user);
+      if (!user) {
+        return done(null, false);
+      }
+      // Don't pass password to the client
+      const { password: _, ...userWithoutPassword } = user;
+      done(null, userWithoutPassword);
     } catch (err) {
       done(err);
     }
   });
 
   // Authentication routes
-  app.post("/api/register", async (req, res, next) => {
+  app.post("/api/register", async (req, res) => {
     try {
-      // Check if user already exists
+      // Check if username already exists
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
@@ -103,40 +109,48 @@ export function setupAuth(app: Express) {
       // Hash password and create user
       const hashedPassword = await hashPassword(req.body.password);
       const user = await storage.createUser({
-        username: req.body.username,
+        ...req.body,
         password: hashedPassword,
       });
 
-      // Log the user in
-      req.login(user, (err) => {
-        if (err) return next(err);
-        // Return the user without password
-        const { password, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
+      // Don't return password to client
+      const { password: _, ...userWithoutPassword } = user;
+
+      // Log in the user after registration
+      req.login(userWithoutPassword, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Error during login after registration" });
+        }
+        return res.status(201).json(userWithoutPassword);
       });
-    } catch (err) {
-      next(err);
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Internal server error during registration" });
     }
   });
 
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
+      if (err) {
+        return next(err);
+      }
       if (!user) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
       req.login(user, (err) => {
-        if (err) return next(err);
-        // Return the user without password
-        const { password, ...userWithoutPassword } = user;
-        res.status(200).json(userWithoutPassword);
+        if (err) {
+          return next(err);
+        }
+        return res.json(user);
       });
     })(req, res, next);
   });
 
-  app.post("/api/logout", (req, res, next) => {
+  app.post("/api/logout", (req, res) => {
     req.logout((err) => {
-      if (err) return next(err);
+      if (err) {
+        return res.status(500).json({ message: "Error during logout" });
+      }
       res.status(200).json({ message: "Logged out successfully" });
     });
   });
@@ -145,13 +159,16 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    // Return the user without password
-    const { password, ...userWithoutPassword } = req.user as SelectUser;
-    res.json(userWithoutPassword);
+    res.json(req.user);
   });
 
   // Middleware to check if user is authenticated
-  app.use("/api/secured/*", (req, res, next) => {
+  app.use([
+    "/api/currencies/*/rate",
+    "/api/transactions/buy",
+    "/api/transactions/sell",
+    "/api/reset"
+  ], (req, res, next) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Authentication required" });
     }
