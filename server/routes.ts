@@ -6,8 +6,35 @@ import {
   insertCurrencySchema,
   insertTransactionSchema
 } from "@shared/schema";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
+  
+  // Restrict currency modification to authenticated users
+  const secureCurrencyRoutes = [
+    { method: 'post', path: '/api/currencies' },
+    { method: 'patch', path: '/api/currencies/:id/rate' },
+    { method: 'post', path: '/api/transactions/buy' },
+    { method: 'post', path: '/api/transactions/sell' },
+    { method: 'post', path: '/api/reset' }
+  ];
+  
+  // Middleware to check authentication for secured routes
+  secureCurrencyRoutes.forEach(route => {
+    app.use(route.path, (req, res, next) => {
+      // Skip auth check for non-matching methods
+      if (req.method.toLowerCase() !== route.method) {
+        return next();
+      }
+      
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      next();
+    });
+  });
   // Get all currencies with inventory info
   app.get("/api/currencies", async (_req: Request, res: Response) => {
     try {
